@@ -1,67 +1,48 @@
-const ChallengeService = require('../services/ChallengeService');
-const LLMService = require('../services/LLMService');
-const Submission = require('../models/Submission');
+const challenges = require('../config/challenges');
+const { generateResponse } = require('../services/llmAdapter');
+const { containsSecretPassword } = require('../utils/passwordDetection');
 
 class ChallengeController {
-  static async getAllChallenges(req, res, next) {
-    try {
-      const challenges = await ChallengeService.getAllChallenges();
-      res.json(challenges);
-    } catch (err) {
-      next(err);
-    }
+  static getAllChallenges(req, res) {
+    res.json(challenges.map(({ secret_password, ...rest }) => rest));
   }
 
-  static async getChallengeById(req, res, next) {
-    try {
-      const challenge = await ChallengeService.getChallengeById(req.params.id);
-      if (!challenge) {
-        return res.status(404).json({ error: 'Challenge not found' });
-      }
-      res.json(challenge);
-    } catch (err) {
-      next(err);
+  static getChallengeById(req, res) {
+    const id = Number(req.params.id);
+    const challenge = challenges.find((item) => item.id === id);
+
+    if (!challenge) {
+      return res.status(404).json({ error: 'Challenge not found' });
     }
+
+    const { secret_password, ...safeChallenge } = challenge;
+    return res.json(safeChallenge);
   }
 
-  static async submitAnswer(req, res, next) {
+  static async submitAttempt(req, res, next) {
     try {
-      const { challengeId, userInput } = req.body;
-      const userId = req.userId;
+      const id = Number(req.params.id);
+      const { prompt } = req.body;
+      const challenge = challenges.find((item) => item.id === id);
 
-      if (!challengeId || !userInput) {
-        return res.status(400).json({ error: 'Missing challengeId or userInput' });
-      }
-
-      const challenge = await ChallengeService.getChallengeById(challengeId);
       if (!challenge) {
         return res.status(404).json({ error: 'Challenge not found' });
       }
 
-      // Call LLM service
-      const llmResponse = await LLMService.callOllama(challenge.systemPrompt, userInput);
+      if (!prompt || typeof prompt !== 'string') {
+        return res.status(400).json({ error: 'prompt is required' });
+      }
 
-      // Check if secret is revealed
-      const success = await LLMService.checkSecretInResponse(llmResponse, challenge.secret);
+      const llmResponse = await generateResponse(challenge.system_prompt, prompt);
+      const success = containsSecretPassword(llmResponse, challenge.secret_password);
 
-      // Save submission
-      const submission = new Submission({
-        userId,
-        challengeId,
-        userInput,
-        llmResponse,
+      return res.json({
         success,
-      });
-
-      await submission.save();
-
-      res.json({
-        submission,
-        success,
-        hint: success ? challenge.explanation : 'Try a different approach',
+        response: llmResponse,
+        hint: success ? undefined : 'Try reframing your request and chaining transformations.',
       });
     } catch (err) {
-      next(err);
+      return next(err);
     }
   }
 }
