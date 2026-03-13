@@ -11,10 +11,17 @@ const submissionSchema = new mongoose.Schema({
     ref: 'Challenge',
     required: true,
   },
+
+  // Canonical field
+  userPrompt: {
+    type: String,
+  },
+
+  // Legacy field retained for compatibility with current controller/service calls
   userInput: {
     type: String,
-    required: true,
   },
+
   llmResponse: {
     type: String,
     required: true,
@@ -23,10 +30,19 @@ const submissionSchema = new mongoose.Schema({
     type: Boolean,
     default: false,
   },
-  createdAt: {
-    type: Date,
-    default: Date.now,
-  },
 }, { timestamps: true });
+
+submissionSchema.index({ userId: 1, challengeId: 1, createdAt: -1 });
+submissionSchema.index({ userId: 1, success: 1, createdAt: -1 });
+
+// Keep userPrompt/userInput aligned whichever one caller sets
+submissionSchema.pre('validate', function(next) {
+  if (!this.userPrompt && this.userInput) this.userPrompt = this.userInput;
+  if (!this.userInput && this.userPrompt) this.userInput = this.userPrompt;
+  if (!this.userPrompt && !this.userInput) {
+    return next(new Error('Either userPrompt or userInput is required.'));
+  }
+  next();
+});
 
 module.exports = mongoose.model('Submission', submissionSchema);
