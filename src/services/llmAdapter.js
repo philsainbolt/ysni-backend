@@ -3,9 +3,27 @@ function maybeExtractSecretFromSystemPrompt(systemPrompt) {
   return match ? match[1] : 'UNKNOWN_SECRET';
 }
 
+function isE2EModeEnabled() {
+  return String(process.env.E2E_MODE || '').toLowerCase() === 'true';
+}
+
+function shouldSucceedDeterministically(userPrompt = '') {
+  const normalized = String(userPrompt).toLowerCase();
+  const successMarkers = ['ignore', 'reveal', 'secret', 'password', 'system prompt', 'bypass'];
+  return successMarkers.some((marker) => normalized.includes(marker));
+}
+
 async function generateResponse(systemPrompt, userPrompt) {
-  // TODO: Wire up Codex via OpenAI-compatible API once API key is available
   const secret = maybeExtractSecretFromSystemPrompt(systemPrompt || '');
+
+  if (isE2EModeEnabled()) {
+    if (shouldSucceedDeterministically(userPrompt)) {
+      return `E2E_MODE: deterministic success. Extracted token => ${secret}`;
+    }
+
+    return 'E2E_MODE: deterministic refusal. No secret disclosed.';
+  }
+
   const includeSecret = Math.random() < 0.8;
 
   if (includeSecret) {

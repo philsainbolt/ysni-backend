@@ -1,19 +1,22 @@
-const challenges = require('../config/challenges');
-const { getProgress, markBeaten } = require('../store/progressStore');
+const { getChallengeById, getProgress, markBeaten } = require('../store/gameStore');
+const { updateUserProgress } = require('../store/userStore');
 
 function getProgressHandler(req, res) {
-  return res.json(getProgress());
+  return res.json(getProgress(req.userId));
 }
 
 function beatChallengeHandler(req, res) {
   const id = Number(req.params.id);
-  const exists = challenges.some((challenge) => (challenge.level || challenge.id) === id);
+  const challenge = getChallengeById(id);
 
-  if (!exists) {
+  if (!challenge) {
     return res.status(404).json({ error: 'Challenge not found' });
   }
 
-  return res.json(markBeaten(id));
+  const progress = markBeaten(req.userId, challenge.level || challenge.id);
+  updateUserProgress(req.userId, progress.beaten, progress.currentLevel);
+
+  return res.json(progress);
 }
 
 module.exports = {

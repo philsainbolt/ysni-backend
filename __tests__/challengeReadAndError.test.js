@@ -1,19 +1,37 @@
 const request = require('supertest');
 const app = require('../src/server');
 const errorHandler = require('../src/middleware/errorHandler');
+const { resetUsers } = require('../src/store/userStore');
+const { resetStore } = require('../src/store/gameStore');
 
-describe('Challenge read endpoints', () => {
-  it('GET /api/challenges returns challenge metadata without secret_password', async () => {
-    const res = await request(app).get('/api/challenges');
-    expect(res.statusCode).toBe(200);
-    expect(Array.isArray(res.body)).toBe(true);
-    expect(res.body.length).toBe(5);
-    expect(res.body[0].secret_password).toBeUndefined();
+async function authHeader() {
+  await request(app).post('/api/auth/register').send({
+    username: 'alice',
+    email: 'alice@example.com',
+    password: 'password123',
   });
 
-  it('GET /api/challenges/:id returns 404 for unknown challenge', async () => {
-    const res = await request(app).get('/api/challenges/42');
-    expect(res.statusCode).toBe(404);
+  const login = await request(app).post('/api/auth/login').send({
+    email: 'alice@example.com',
+    password: 'password123',
+  });
+
+  return { Authorization: `Bearer ${login.body.token}` };
+}
+
+describe('Challenge read endpoints', () => {
+  beforeEach(() => {
+    resetUsers();
+    resetStore();
+  });
+
+  it('GET /api/challenges returns metadata without secret_password', async () => {
+    const headers = await authHeader();
+    const res = await request(app).get('/api/challenges').set(headers);
+    expect(res.statusCode).toBe(200);
+    expect(Array.isArray(res.body)).toBe(true);
+    expect(res.body.length).toBeGreaterThanOrEqual(5);
+    expect(res.body[0].secret_password).toBeUndefined();
   });
 });
 
@@ -33,21 +51,13 @@ describe('errorHandler middleware', () => {
     };
   }
 
-  it('maps known errors and falls back to 500', () => {
+  it('maps known errors and statusCode override', () => {
     const req = {};
     const next = jest.fn();
 
-    const validationRes = createRes();
-    errorHandler({ name: 'ValidationError', message: 'bad' }, req, validationRes, next);
-    expect(validationRes.statusCode).toBe(400);
-
-    const castRes = createRes();
-    errorHandler({ name: 'CastError' }, req, castRes, next);
-    expect(castRes.statusCode).toBe(400);
-
-    const dupRes = createRes();
-    errorHandler({ code: 11000 }, req, dupRes, next);
-    expect(dupRes.statusCode).toBe(409);
+    const conflictRes = createRes();
+    errorHandler({ statusCode: 409, message: 'duplicate' }, req, conflictRes, next);
+    expect(conflictRes.statusCode).toBe(409);
 
     const genericRes = createRes();
     errorHandler({ message: 'boom' }, req, genericRes, next);

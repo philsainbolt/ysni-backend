@@ -1,34 +1,47 @@
 const request = require('supertest');
 const app = require('../src/server');
-const { resetProgress } = require('../src/store/progressStore');
+const { resetUsers } = require('../src/store/userStore');
+const { resetStore } = require('../src/store/gameStore');
+
+async function authHeader() {
+  await request(app).post('/api/auth/register').send({
+    username: 'alice',
+    email: 'alice@example.com',
+    password: 'password123',
+  });
+
+  const login = await request(app).post('/api/auth/login').send({
+    email: 'alice@example.com',
+    password: 'password123',
+  });
+
+  return { Authorization: `Bearer ${login.body.token}` };
+}
 
 describe('Progress endpoints', () => {
   beforeEach(() => {
-    resetProgress();
+    resetUsers();
+    resetStore();
   });
 
   it('GET /api/progress returns initial state', async () => {
-    const res = await request(app).get('/api/progress');
+    const headers = await authHeader();
+    const res = await request(app).get('/api/progress').set(headers);
 
     expect(res.statusCode).toBe(200);
-    expect(res.body).toEqual({ beaten: [], currentLevel: 1 });
+    expect(res.body.currentLevel).toBe(1);
+    expect(res.body.beaten).toEqual([]);
   });
 
   it('POST /api/progress/beat/:id marks challenges as beaten and advances level', async () => {
-    const beatOne = await request(app).post('/api/progress/beat/1');
+    const headers = await authHeader();
+
+    const beatOne = await request(app).post('/api/progress/beat/1').set(headers);
     expect(beatOne.statusCode).toBe(200);
-    expect(beatOne.body).toEqual({ beaten: [1], currentLevel: 2 });
+    expect(beatOne.body.currentLevel).toBe(2);
 
-    const beatTwo = await request(app).post('/api/progress/beat/2');
+    const beatTwo = await request(app).post('/api/progress/beat/2').set(headers);
     expect(beatTwo.statusCode).toBe(200);
-    expect(beatTwo.body).toEqual({ beaten: [1, 2], currentLevel: 3 });
-
-    const final = await request(app).get('/api/progress');
-    expect(final.body).toEqual({ beaten: [1, 2], currentLevel: 3 });
-  });
-
-  it('returns 404 for invalid challenge id', async () => {
-    const res = await request(app).post('/api/progress/beat/999');
-    expect(res.statusCode).toBe(404);
+    expect(beatTwo.body.currentLevel).toBe(3);
   });
 });

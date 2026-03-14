@@ -13,6 +13,10 @@ const errorHandler = (err, req, res, next) => {
     return res.status(409).json({ error: 'Duplicate entry' });
   }
 
+  if (err.statusCode) {
+    return res.status(err.statusCode).json({ error: err.message });
+  }
+
   res.status(500).json({ error: 'Internal server error', message: err.message });
 };
 

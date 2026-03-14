@@ -1,45 +1,49 @@
 const jwt = require('jsonwebtoken');
-const User = require('../models/User');
+const {
+  createUser,
+  findUserByEmail,
+  findUserById,
+  verifyPassword,
+  sanitizeUser,
+} = require('../store/userStore');
 
 class AuthService {
   static async register(username, email, password) {
-    const existingUser = await User.findOne({ $or: [{ username }, { email }] });
-    if (existingUser) {
-      throw new Error('User already exists');
-    }
-
-    const user = new User({
-      username,
-      email,
-      passwordHash: password,
-    });
-
-    await user.save();
-    return user;
+    return createUser({ username, email, password });
   }
 
   static async login(email, password) {
-    const user = await User.findOne({ email });
+    const user = findUserByEmail(email);
     if (!user) {
-      throw new Error('Invalid email or password');
+      const err = new Error('Invalid email or password');
+      err.statusCode = 401;
+      throw err;
     }
 
-    const isPasswordValid = await user.comparePassword(password);
+    const isPasswordValid = await verifyPassword(user, password);
     if (!isPasswordValid) {
-      throw new Error('Invalid email or password');
+      const err = new Error('Invalid email or password');
+      err.statusCode = 401;
+      throw err;
     }
 
+    const safeUser = sanitizeUser(user);
     const token = jwt.sign(
-      { id: user._id, username: user.username },
+      { id: safeUser.id, username: safeUser.username, email: safeUser.email },
       process.env.JWT_SECRET || 'secret',
       { expiresIn: '7d' }
     );
 
-    return { user, token };
+    return { user: safeUser, token };
   }
 
   static async verifyToken(token) {
     return jwt.verify(token, process.env.JWT_SECRET || 'secret');
+  }
+
+  static getProfile(userId) {
+    const user = findUserById(userId);
+    return user ? sanitizeUser(user) : null;
   }
 }
 
