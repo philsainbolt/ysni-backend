@@ -1,4 +1,5 @@
 const jwt = require('jsonwebtoken');
+const { getJwtSecret } = require('../config/runtime');
 const {
   createUser,
   findUserByEmail,
@@ -30,7 +31,7 @@ class AuthService {
     const safeUser = sanitizeUser(user);
     const token = jwt.sign(
       { id: safeUser.id, username: safeUser.username, email: safeUser.email },
-      process.env.JWT_SECRET || 'secret',
+      getJwtSecret(),
       { expiresIn: '7d' }
     );
 
@@ -38,7 +39,7 @@ class AuthService {
   }
 
   static async verifyToken(token) {
-    return jwt.verify(token, process.env.JWT_SECRET || 'secret');
+    return jwt.verify(token, getJwtSecret());
   }
 
   static getProfile(userId) {

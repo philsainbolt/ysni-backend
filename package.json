@@ -6,8 +6,8 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "test": "jest --coverage",
-    "test:watch": "jest --watch"
+    "test": "E2E_MODE=true jest --coverage",
+    "test:watch": "E2E_MODE=true jest --watch"
   },
   "keywords": ["prompt-injection", "learning"],
   "author": "",

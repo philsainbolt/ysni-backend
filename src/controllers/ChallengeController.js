@@ -23,7 +23,14 @@ class ChallengeController {
       return res.status(404).json({ error: 'Challenge not found' });
     }
 
-    const { secretPassword, secret_password, ...safeChallenge } = challenge;
+    const {
+      secretPassword,
+      secret_password,
+      systemPrompt,
+      system_prompt,
+      ...safeChallenge
+    } = challenge;
+
     return res.json(safeChallenge);
   }
 

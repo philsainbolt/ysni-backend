@@ -6,13 +6,19 @@ let progressByUser = new Map();
 let submissions = [];
 let nextSubmissionId = 1;
 
-function stripSecrets(challenge) {
-  const { secretPassword, secret_password, ...safe } = challenge;
+function stripSensitiveFields(challenge) {
+  const {
+    secretPassword,
+    secret_password,
+    systemPrompt,
+    system_prompt,
+    ...safe
+  } = challenge;
   return safe;
 }
 
 function getAllChallenges() {
-  return challenges.map(stripSecrets).sort((a, b) => (a.level || a.id) - (b.level || b.id));
+  return challenges.map(stripSensitiveFields).sort((a, b) => (a.level || a.id) - (b.level || b.id));
 }
 
 function getChallengeById(id) {
@@ -36,7 +42,7 @@ function createChallenge(payload) {
   };
 
   challenges.push(created);
-  return stripSecrets(created);
+  return stripSensitiveFields(created);
 }
 
 function updateChallenge(id, payload) {
@@ -61,7 +67,7 @@ function updateChallenge(id, payload) {
     challenge.difficulty_level = payload.level;
   }
 
-  return stripSecrets(challenge);
+  return stripSensitiveFields(challenge);
 }
 
 function deleteChallenge(id) {
