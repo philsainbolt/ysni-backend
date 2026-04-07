@@ -1,5 +1,4 @@
 const { generateResponse } = require('../services/llmAdapter');
-const { containsSecretPassword } = require('../utils/passwordDetection');
 const Challenge = require('../models/Challenge');
 const Submission = require('../models/Submission');
 const User = require('../models/User');
@@ -101,41 +100,78 @@ class ChallengeController {
       }
 
       const systemPrompt = challenge.systemPrompt || challenge.system_prompt;
-      const secretPassword = challenge.secretPassword || challenge.secret_password || challenge.secret;
 
       const llmResponse = await generateResponse(systemPrompt, normalizedPrompt);
-      const success = containsSecretPassword(llmResponse, secretPassword);
 
       const submission = await Submission.create({
         userId: req.userId,
         challengeId: challenge._id,
         userPrompt: normalizedPrompt,
         llmResponse,
-        success,
+        success: false,
       });
 
-      let progress = null;
-      if (success) {
-        const level = challenge.level || challenge.order;
-        await User.findByIdAndUpdate(req.userId, {
-          $addToSet: { beatenLevels: level },
-          $max: { progressLevel: level + 1 },
-        });
-        const user = await User.findById(req.userId);
-        const beaten = (user.beatenLevels || []).sort((a, b) => a - b);
-        progress = { beaten, beatenLevels: beaten, currentLevel: user.progressLevel };
-      }
-
       return res.json({
-        success,
-        pass: success,
         response: llmResponse,
-        hint: success ? undefined : 'Try reframing your request and chaining transformations.',
         submissionId: submission._id,
-        progress,
       });
     } catch (err) {
       return next(err);
+    }
+  }
+
+  static async guessPassword(req, res, next) {
+    try {
+      const { id } = req.params;
+      const { password, submissionId } = req.body;
+
+      const challenge = await Challenge.findById(id);
+      if (!challenge) return res.status(404).json({ error: 'Challenge not found' });
+
+      const secretPassword = challenge.secretPassword || challenge.secret;
+      const correct = password.trim().toUpperCase() === secretPassword.trim().toUpperCase();
+
+      if (!correct) {
+        return res.json({
+          correct: false,
+          hint: 'Incorrect password. Read the response more carefully.',
+        });
+      }
+
+      if (submissionId) {
+        await Submission.findByIdAndUpdate(submissionId, { success: true });
+      }
+
+      const user = await User.findById(req.userId);
+      if (!user.beatenLevels.includes(challenge.level)) {
+        user.beatenLevels.push(challenge.level);
+        user.beatenLevels.sort((a, b) => a - b);
+        user.progressLevel = Math.max(user.progressLevel, challenge.level);
+        await user.save();
+      }
+
+      const nextChallenge = await Challenge.findOne({ level: challenge.level + 1 });
+      const reveal = {
+        systemPrompt: challenge.systemPrompt,
+        explanation: challenge.explanation,
+        technique: challenge.technique,
+        nextTechniqueHint: challenge.nextTechniqueHint || null,
+        nextChallengeId: nextChallenge?._id || null,
+      };
+
+      return res.json({
+        correct: true,
+        success: true,
+        pass: true,
+        progress: {
+          beaten: user.beatenLevels,
+          beatenLevels: user.beatenLevels,
+          currentLevel: user.progressLevel,
+        },
+        reveal,
+      });
+    } catch (err) {
+      next(err);
     }
   }
 }

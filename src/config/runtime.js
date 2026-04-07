@@ -23,8 +23,13 @@ function isAdminEmail(email) {
   return configured.includes(String(email || '').trim().toLowerCase());
 }
 
+function getGroqApiKey() {
+  return process.env.GROQ_API_KEY || '';
+}
+
 module.exports = {
   isE2EModeEnabled,
   getJwtSecret,
   isAdminEmail,
+  getGroqApiKey,
 };

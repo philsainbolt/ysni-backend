@@ -8,6 +8,7 @@ const {
   createChallengeRules,
   updateChallengeRules,
   submitAttemptRules,
+  guessPasswordRules,
 } = require('../middleware/validators');
 
 const router = express.Router();
@@ -18,5 +19,6 @@ router.post('/', authMiddleware, adminMiddleware, createChallengeRules, validate
 router.put('/:id', authMiddleware, adminMiddleware, paramIdRules, updateChallengeRules, validate, ChallengeController.updateChallenge);
 router.delete('/:id', authMiddleware, adminMiddleware, paramIdRules, validate, ChallengeController.deleteChallenge);
 router.post('/:id/submit', authMiddleware, paramIdRules, submitAttemptRules, validate, ChallengeController.submitAttempt);
+router.post('/:id/guess', authMiddleware, paramIdRules, guessPasswordRules, validate, ChallengeController.guessPassword);
 
 module.exports = router;

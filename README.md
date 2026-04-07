@@ -1,3 +1,5 @@
+![Node.js](https://img.shields.io/badge/Node.js-18-339933?logo=node.js&logoColor=white) ![Express](https://img.shields.io/badge/Express-4-000000?logo=express&logoColor=white) ![MongoDB](https://img.shields.io/badge/MongoDB-Atlas-47A248?logo=mongodb&logoColor=white) ![Fly.io](https://img.shields.io/badge/Fly.io-Deployed-8B5CF6?logo=fly.io&logoColor=white) ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
+
 # You Shall Not Inject -- Backend API
 
 REST API for a prompt injection learning platform. Users register, log in, and work through 5 progressive challenges where they try to trick an LLM into revealing a secret password. The backend handles auth, challenge management, prompt submission, LLM evaluation, and progress tracking.

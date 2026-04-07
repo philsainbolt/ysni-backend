@@ -50,6 +50,11 @@ const paramLevelRules = [
   param('id').isInt({ min: 1 }).withMessage('Invalid level number'),
 ];
 
+const guessPasswordRules = [
+  body('password').notEmpty().isString().withMessage('password is required'),
+  body('submissionId').optional().isMongoId().withMessage('submissionId must be a valid ID'),
+];
+
 module.exports = {
   registerRules,
   loginRules,
@@ -59,4 +64,5 @@ module.exports = {
   updateSubmissionRules,
   paramIdRules,
   paramLevelRules,
+  guessPasswordRules,
 };
