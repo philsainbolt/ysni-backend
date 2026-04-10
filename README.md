@@ -4,6 +4,10 @@
 
 REST API for a prompt injection learning platform. Users register, log in, and work through 5 progressive challenges where they try to trick an LLM into revealing a secret password. The backend handles auth, challenge management, prompt submission, LLM evaluation, and progress tracking.
 
+<p align="center">
+  <img src="screenshot.png" alt="You Shall Not Inject" width="600">
+</p>
+
 **Live:** https://prompt-injection-backend.onrender.com
 
 ## Features
